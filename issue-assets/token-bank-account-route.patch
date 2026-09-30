@@ -1,0 +1,263 @@
+diff --git a/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.i18n.yaml b/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.i18n.yaml
+index 3feb99d..5c98a71 100644
+--- a/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.i18n.yaml
++++ b/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.i18n.yaml
+@@ -1,5 +1,5 @@
+ # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+ # side as of the last confirmed-consistent state. Both languages carry equal authority;
+ # after editing either side, bring the other along and re-record with git hash-object.
+-2026-08-29-usage-peak-pricing-and-announce-fix.md: bd056e34b099731ead8f68a9e66205caa9d48631
+-2026-08-29-usage-peak-pricing-and-announce-fix.zh.md: a3d0469a06b767db4e400fb480605b664278d7b5
++2026-08-29-usage-peak-pricing-and-announce-fix.md: a132f46c8f443db38fee89f1b774ef464955c702
++2026-08-29-usage-peak-pricing-and-announce-fix.zh.md: 9e983f61301e0decf9bb0b38a61066cc8b1180d3
+diff --git a/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.md b/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.md
+index bd056e3..a132f46 100644
+--- a/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.md
++++ b/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.md
+@@ -14,7 +14,7 @@ Two defects and one missing surface in the dsh-usage pet linkage, reported toget
+ 
+ ## Decision
+ 
+-- **Id reconciliation at the adapter layer** (`src/core/adapters.ts`): the DEEPSEEK adapter now serves both `deepseek` and `deepseek-official`, and `isDeepSeekProviderRoute()` keys family behavior (credential env fallback via the `llm-deepseek` settings section, fold-time pricing) off adapter identity rather than a hardcoded id. `announceCurrent()` additionally falls back to the adapter-family snapshot when the current route id has none of its own, so a catalog/live id drift can never silence the bubble again.
++- **Id reconciliation at the adapter layer** (`src/core/adapters.ts`): the DEEPSEEK adapter now serves both `deepseek` and `deepseek-official`, and `isDeepSeekProviderRoute()` keys family behavior (credential env fallback via the `llm-deepseek` settings section, fold-time pricing) off adapter identity rather than a hardcoded id. `announceCurrent()` additionally falls back to the adapter-family snapshot when the current route id has none of its own, so a catalog/live id drift can never silence the bubble again. The family also covers the sign-in channel: `deepseek-account` (the live route `llm-deepseek-account` registers) joins through the adapter's `familyIds`, so fold-time pricing, the spend watch, the peak line and the Token Bank mint count its tokens, while the route stays out of `ids` and is therefore never probed with the family's API key.
+ - **Poll-cadence TTL** (`src/host/usage-service.ts` + pet contract): the announcer declares `ttlMs = 2 x poll interval + 30 s` (capped), and the pet contract ceiling moves from 60 s to 2 h (`ANNOUNCE_MAX_TTL_MS`) — an `always`-mode bubble stays continuous across polls, while a dead source still unmounts within one missed refresh.
+ - **Fold-time spend estimate** (`src/core/pricing.ts`): `UsageTokenTotals` gains a `cost` number stamped when the usage folds, priced from the published V4 price book (flash/pro rows, CNY per million tokens) in the billing period at the fold instant. DeepSeek official routes only; other families stay 0 so the sum is never a mixed-currency total. Persisted buckets keep their old pricing (no retroactive re-pricing); `reviveTotals` restores `cost`, so reloads never double-price.
+ - **Cost-first bubble**: with spend today, DeepSeek announces kind `cost` (new contract member) — amount `今日 ¥x.xx`, note carrying the current period (`高峰时段 计价×2` / `空闲时段 计价减半`) plus the balance, tone `warn` while peaking. Zero-spend days fall back to the balance bubble; plan providers keep the plan bubble. The usage tab shows the peak period line (gated on the DeepSeek family being current or present today) and a today-spend row with per-provider cost suffixes.
+diff --git a/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.zh.md b/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.zh.md
+index a3d0469..9e983f6 100644
+--- a/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.zh.md
++++ b/.agents/notes/implemented/feature/2026-08-29-usage-peak-pricing-and-announce-fix.zh.md
+@@ -14,7 +14,7 @@ Status: implemented
+ 
+ ## Decision
+ 
+-- **适配器层做 id 归类**（`src/core/adapters.ts`）：DEEPSEEK 适配器同时服务 `deepseek` 与 `deepseek-official`；`isDeepSeekProviderRoute()` 以适配器同一性（而非硬编码 id）驱动家族行为（经 `llm-deepseek` 设置节的凭证 env 回退、折叠时计价）。`announceCurrent()` 在当前路由 id 没有自己的快照时回退到适配器家族快照，目录/运行时 id 漂移从此无法再让气泡失声。
++- **适配器层做 id 归类**（`src/core/adapters.ts`）：DEEPSEEK 适配器同时服务 `deepseek` 与 `deepseek-official`；`isDeepSeekProviderRoute()` 以适配器同一性（而非硬编码 id）驱动家族行为（经 `llm-deepseek` 设置节的凭证 env 回退、折叠时计价）。`announceCurrent()` 在当前路由 id 没有自己的快照时回退到适配器家族快照，目录/运行时 id 漂移从此无法再让气泡失声。家族同时覆盖账号通道：`deepseek-account`（`llm-deepseek-account` 注册的运行时路由）经适配器的 `familyIds` 加入，折叠时计价、消费观测、峰谷行与 Token 银行铸造都计入其 tokens；该路由不在 `ids` 中，因而绝不会被拿家族 API key 去探测余额。
+ - **随轮询节奏的 TTL**（`src/host/usage-service.ts` + 宠物契约）：发布方声明 `ttlMs = 2 x 轮询间隔 + 30 秒`（封顶），宠物契约上限从 60 秒放宽到 2 小时（`ANNOUNCE_MAX_TTL_MS`）——常驻模式气泡跨轮询连续，失活来源仍在一个刷新周期内消失。
+ - **折叠时消费估算**（`src/core/pricing.ts`）：`UsageTokenTotals` 增加 `cost` 数值，在用量折叠时按公布的 V4 价目表（flash/pro 档，CNY / 百万 tokens）按折叠时刻所属计费时段定价。仅 DeepSeek 官方路由计价，其他家族保持 0，总和不会变成跨币种混算。已持久化的桶保留旧价（不追溯重估）；`reviveTotals` 恢复 `cost`，重载绝不二次计价。
+ - **消费优先的气泡**：当日有消费时 DeepSeek 公告 kind `cost`（契约新成员）——金额 `今日 ¥x.xx`，note 携带当前时段（`高峰时段 计价×2` / `空闲时段 计价减半`）与余额，高峰期 tone `warn`。零消费日回退余额气泡；套餐类 provider 保持套餐气泡。用量页签展示峰谷时段行（以 DeepSeek 家族为当前路由或今日有流量为门槛）与今日消费行（provider 行带消费后缀）。
+diff --git a/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.i18n.yaml b/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.i18n.yaml
+index 6280a4e..f29fead 100644
+--- a/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.i18n.yaml
++++ b/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.i18n.yaml
+@@ -1,2 +1,2 @@
+-.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.md: 4331bed139012b1528aa916496a76efbd78fd7e2
+-.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.zh.md: 5cef214aeddd6541b02bf049097206bfa2c20826
++.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.md: 09ee764422509e8ea1d6c9c0c1168ff01a493a02
++.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.zh.md: 7639fdf728be91a008c522ed1528749383c523bd
+diff --git a/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.md b/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.md
+index 4331bed..09ee764 100644
+--- a/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.md
++++ b/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.md
+@@ -12,7 +12,7 @@ The section grows a third tab, Token 银行, next to 用量 and 个人套餐.
+ 
+ ### Data path
+ 
+-The overview document carries a new optional `usage.all` window: the whole retained ledger (every day still under `retainDays`, today included) aggregated per provider with the same `summarizeDays` fold the trend uses. It is optional in the wire type, so an older host document degrades the tab to the 30-day `range` window instead of breaking it. The card sums the DeepSeek official family rows (`deepseek` alias plus `deepseek-official` live route, the same family test as the spend estimate); other providers never mint. Zero family tokens renders the empty state, not a zero-token note.
++The overview document carries a new optional `usage.all` window: the whole retained ledger (every day still under `retainDays`, today included) aggregated per provider with the same `summarizeDays` fold the trend uses. It is optional in the wire type, so an older host document degrades the tab to the 30-day `range` window instead of breaking it. The card sums the DeepSeek official family rows (`deepseek` alias, the `deepseek-official` live route and the `deepseek-account` sign-in route — the same family test as the spend estimate); other providers never mint. Zero family tokens renders the empty state, not a zero-token note.
+ 
+ A second optional field, `usage.observedSpend`, carries the family's real CNY spend: the host watches the official balance series (`/user/balance`, CNY rows) across poll cycles and accrues every decrease as spent, while a rise is a top-up and never counts. The watch is family-level (the route ids can alias one account, so it follows the largest observed balance), persists inside the provider-snapshots file, revives strictly on load, and the field appears only once a decrease has been observed — until then the card shows the fold-time estimate.
+ 
+diff --git a/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.zh.md b/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.zh.md
+index 5cef214..7639fdf 100644
+--- a/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.zh.md
++++ b/.agents/notes/implemented/feature/2026-09-10-whale-yuan-voucher-token-bank.zh.md
+@@ -12,7 +12,7 @@ Status: implemented
+ 
+ ### 数据路径
+ 
+-overview 文档新增可选的 `usage.all` 窗口：整个保留台账（`retainDays` 内的每一天，含今日）按 provider 聚合，复用趋势图同一个 `summarizeDays` 折叠。该字段在 wire 类型上可选，旧宿主文档只让页签退回 30 天 `range` 窗口，不会坏。卡片把 DeepSeek 官方家族行求和（`deepseek` 目录别名与运行时路由 `deepseek-official`，与消费估算同一家族判定）；其他 provider 永不铸造。家族 token 为零时渲染空状态，而不是一张零面额钞票。
++overview 文档新增可选的 `usage.all` 窗口：整个保留台账（`retainDays` 内的每一天，含今日）按 provider 聚合，复用趋势图同一个 `summarizeDays` 折叠。该字段在 wire 类型上可选，旧宿主文档只让页签退回 30 天 `range` 窗口，不会坏。卡片把 DeepSeek 官方家族行求和（`deepseek` 目录别名、运行时路由 `deepseek-official` 与账号通道 `deepseek-account`，与消费估算同一家族判定）；其他 provider 永不铸造。家族 token 为零时渲染空状态，而不是一张零面额钞票。
+ 
+ 第二个可选字段 `usage.observedSpend` 承载该家族的真实人民币花费：宿主跨轮询周期观测官方余额序列（`/user/balance` 的 CNY 行），把每一次下降累计为消费，上涨是充值、永不计费。观测是家族级的（路由别名可能指向同一账户，观测跟随当轮最大的余额），随 provider-snapshots 文件持久化、加载时严格复苏；只有在第一次观测到下降后字段才出现，此前卡片展示折叠时刻估算。
+ 
+diff --git a/packages/dsh-usage/README.i18n.yaml b/packages/dsh-usage/README.i18n.yaml
+index 66d37d5..c162f75 100644
+--- a/packages/dsh-usage/README.i18n.yaml
++++ b/packages/dsh-usage/README.i18n.yaml
+@@ -2,5 +2,5 @@
+ # side as of the last confirmed-consistent state. Both languages carry equal authority;
+ # after editing either side, bring the other along and re-record with:
+ #   node scripts/verify-docs.mjs --write <dir>
+-README.md: c3ae13c7168c45ebe68e644dd04c5c7557ad8945
+-README.zh.md: c9ce6446d409a8ab0ad4e75ff2acb9a6414f72e5
++README.md: ca50a3fa3688aa16b40af613c093e4e960c6dc47
++README.zh.md: 42f1a4552bf55d976e627aee58670569be77c873
+diff --git a/packages/dsh-usage/README.md b/packages/dsh-usage/README.md
+index c3ae13c..ca50a3f 100644
+--- a/packages/dsh-usage/README.md
++++ b/packages/dsh-usage/README.md
+@@ -10,7 +10,7 @@ The plugin runs a host-side service and a first-level settings section (使用
+ 
+ - **Usage tab (用量)**: today's token totals per bucket (input / output / cache read / cache write, disjoint as the provider reports them) with per-provider and per-model breakdown, the last 30 days as a horizontal provider/model bar chart, and the balance of every configured provider (one row per adapter family: a dormant catalog alias shadowed by the family's live route no longer renders its own balance row). For the official DeepSeek family the tab also shows the current peak/off-peak pricing period (Beijing weekdays 09:00-12:00 and 14:00-18:00 are peak, billed at double) and today's estimated spend in CNY. The ledger folds live `session/event` streams (`request/header` route attribution plus `assistant/message` usage) into `$DSH_HOME/dsh-usage/usage-ledger.json` with day-based retention; counting starts when the plugin is first enabled.
+ - **Plans tab (个人套餐)**: coding-plan quota windows for every configured provider that exposes one — used percent and reset time per window (Kimi For Coding 5h/week, GLM Coding Plan 5h/week/month, OpenCode Go rolling/weekly/monthly, MiniMax 5h/week, Codex / ChatGPT subscription 5h/week). Providers without a real plan or subscription (DeepSeek, ZenMux, Moonshot, OpenRouter, SiliconFlow) never appear on this tab; their balance shows on the usage tab instead.
+-- **Token Bank tab (Token 银行)**: the whale-yuan voucher (鲸元券) minted from the official DeepSeek family's ledger at an anti-inflation exchange rate of 1,000,000 tokens per whale yuan. The tab sums the family's retained-ledger tokens (the `deepseek` catalog alias and the live `deepseek-official` route combined), stamps the minted face value onto the banknote artwork with a serial line carrying the minting window, and offers a save-image button plus a native share button when the browser supports sharing files. The spend line shows the real CNY total observed from the official balance once available — balance decreases accrue as spend, top-ups never count — and falls back to the fold-time estimate before the first observation. The minted total prefers the host's whole-ledger aggregate and falls back to the last 30 days on an older host; with no official DeepSeek usage the tab shows its empty state. The on-note text is locale-neutral (digits, latin captions, ISO dates) and the export is rendered locally in the browser.
++- **Token Bank tab (Token 银行)**: the whale-yuan voucher (鲸元券) minted from the official DeepSeek family's ledger at an anti-inflation exchange rate of 1,000,000 tokens per whale yuan. The tab sums the family's retained-ledger tokens (the `deepseek` catalog alias, the live `deepseek-official` route and the `deepseek-account` sign-in route combined), stamps the minted face value onto the banknote artwork with a serial line carrying the minting window, and offers a save-image button plus a native share button when the browser supports sharing files. The spend line shows the real CNY total observed from the official balance once available — balance decreases accrue as spend, top-ups never count — and falls back to the fold-time estimate before the first observation. The minted total prefers the host's whole-ledger aggregate and falls back to the last 30 days on an older host; with no official DeepSeek usage the tab shows its empty state. The on-note text is locale-neutral (digits, latin captions, ISO dates) and the export is rendered locally in the browser.
+ - **Sidebar foot card**: a compact glance seated above the sidebar's Settings row — today's estimated spend as the headline (today's tokens when nothing priced is recorded yet), the tokens/calls line, and up to two configured-provider balances with a +N overflow. The whole card is one button that opens the usage settings section, so detail stays in one place, and the corner chevron folds it into a one-line strip (the spending provider's name, the label, and the headline value), a choice persisted across reloads. It polls at a relaxed 30 s cadence while the tab is visible, hides in the collapsed 56 px rail, and disappears while the plugin is disabled.
+ - Probes run entirely host-side on a poll cycle (default 60 s, manual refresh button); API keys are resolved through the harness credential seam (`llm-pi-ai` records, `apiKeyEnv` references) and never reach the browser.
+ 
+diff --git a/packages/dsh-usage/README.zh.md b/packages/dsh-usage/README.zh.md
+index c9ce644..42f1a45 100644
+--- a/packages/dsh-usage/README.zh.md
++++ b/packages/dsh-usage/README.zh.md
+@@ -10,7 +10,7 @@ dsh Web GUI 的使用统计插件：多 provider 余额与编程套餐用量检
+ 
+ - **用量页签**：今日 token 分桶合计（输入 / 输出 / 缓存读 / 缓存写，按 provider 上报口径互不相加），分 provider 与模型细分，近 30 天以「提供方-模型」水平条形图展示，以及所有已配置 provider 的余额（同一适配器家族只渲染一行：被该家族运行时路由遮蔽的休眠目录别名不再单独出余额行）。对 DeepSeek 官方路由，页签还展示当前峰谷计价时段（北京时间工作日 09:00-12:00、14:00-18:00 为高峰，按双倍计费）与今日消费估算（CNY）。台账从 `session/event` 实时流折叠（`request/header` 归因路由 + `assistant/message` 用量），持久化到 `$DSH_HOME/dsh-usage/usage-ledger.json`，按本地日保留；统计自插件首次启用起计。
+ - **个人套餐页签**：每个已配置且暴露套餐端点的 provider 的配额窗口——已用百分比与重置时间（Kimi For Coding 5 小时/每周、GLM 编程计划 5 小时/每周/每月、OpenCode Go 滚动/每周/每月、MiniMax 5 小时/每周、Codex / ChatGPT 订阅 5 小时/每周）。没有真实套餐/订阅体系的厂商（DeepSeek、ZenMux、Moonshot、OpenRouter、SiliconFlow）不出现在此页签，其余额显示在用量页签。
+-- **Token 银行页签**：以 DeepSeek 官方家族的台账用量铸造「鲸元券」，汇率按 100 万 tokens 兑 1 鲸元（防膨胀）。页签把该家族保留台账内的 token 总量（`deepseek` 目录别名与运行时路由 `deepseek-official` 合并计算）折算成票面面额印在钞票图上，附带走票窗口的序列号行，并提供保存图片按钮与（浏览器支持文件分享时的）系统分享按钮。消费行优先展示从官方余额观测到的真实累计花费——余额下降即计为消费，充值上涨不计——首次观测到下降之前回落为折叠时刻估算。铸造总量优先取宿主的全台账聚合，旧宿主回落为近 30 天；无官方用量时展示空状态。票面文字与语言无关（数字、拉丁小字、ISO 日期），导出图在浏览器本地渲染。
++- **Token 银行页签**：以 DeepSeek 官方家族的台账用量铸造「鲸元券」，汇率按 100 万 tokens 兑 1 鲸元（防膨胀）。页签把该家族保留台账内的 token 总量（`deepseek` 目录别名、运行时路由 `deepseek-official` 与账号通道 `deepseek-account` 合并计算）折算成票面面额印在钞票图上，附带走票窗口的序列号行，并提供保存图片按钮与（浏览器支持文件分享时的）系统分享按钮。消费行优先展示从官方余额观测到的真实累计花费——余额下降即计为消费，充值上涨不计——首次观测到下降之前回落为折叠时刻估算。铸造总量优先取宿主的全台账聚合，旧宿主回落为近 30 天；无官方用量时展示空状态。票面文字与语言无关（数字、拉丁小字、ISO 日期），导出图在浏览器本地渲染。
+ - **侧栏底部速览卡**：位于侧栏「设置」行上方、与更新/远程触发器同组的紧凑卡片——头条为今日消费估算（今日尚无可计价用量时回落为 tokens 总量），下方是 tokens/调用次数行，以及最多两个已配置 provider 的余额（超出折叠为 +N）。整张卡片主体是一个按钮，点击打开使用统计设置分区，细节只保留在一处；右上角箭头可把卡片收成一行摘要条（消费提供方名称 + 标签 + 头条值），选择跨刷新保持。标签页可见时以 30 秒的宽松周期轮询，侧栏折叠为 56px 栏轨时隐藏，插件停用时消失。
+ - 探测完全在宿主侧按轮询周期执行（默认 60 秒，可手动刷新）；API key 经宿主凭据缝解析（`llm-pi-ai` 记录、`apiKeyEnv` 引用），永不进入浏览器。
+ 
+diff --git a/packages/dsh-usage/src/core/adapters.ts b/packages/dsh-usage/src/core/adapters.ts
+index e1bc649..1ddd834 100644
+--- a/packages/dsh-usage/src/core/adapters.ts
++++ b/packages/dsh-usage/src/core/adapters.ts
+@@ -44,10 +44,20 @@ export interface PlanParse {
+   windows: PlanWindowView[]
+ }
+ 
+-/** One provider family's probing capability. */
++/** One provider family: the route keys it probes plus any that only belong to it. */
+ export interface ProviderAdapter {
+   /** Provider route keys this adapter serves. */
+   ids: readonly string[]
++  /**
++   * Route keys that join this adapter's family for reporting and pricing
++   * without inheriting its probes. The sign-in account channel
++   * (`deepseek-account`, registered by `llm-deepseek-account`) serves the same
++   * DeepSeek account and the same models as the family's API-key route, so its
++   * tokens must count as family usage — but it authenticates with an account
++   * token, so the family's pay-as-you-go balance endpoint must never be probed
++   * under that route with the family's API key.
++   */
++  familyIds?: readonly string[]
+   /** Fallback display name when the LLM runtime has none. */
+   displayName: string
+   balance?: {
+@@ -128,12 +138,19 @@ function bearer(apiKey: string): Record<string, string> {
+  * route key; `deepseek-official` is the live provider route the llm-deepseek
+  * adapter registers (sessions and agent-default-model carry it), so both ids
+  * must resolve here or the current provider would never be probed.
++ * `deepseek-account` is the live route `llm-deepseek-account` registers for the
++ * account (sign-in) channel: the same account and models reached with an
++ * account token instead of the family API key, so it joins the family through
++ * `familyIds` and stays out of `ids` — probing the pay-as-you-go balance under
++ * its name with `DEEPSEEK_API_KEY` would report an API-key account's money as
++ * the account route's balance.
+  */
+ /** The official DeepSeek API origin: the only account its balance endpoint reports. */
+ export const DEEPSEEK_API_ORIGIN = 'https://api.deepseek.com'
+ 
+ const DEEPSEEK: ProviderAdapter = {
+   ids: ['deepseek', 'deepseek-official'],
++  familyIds: ['deepseek-account'],
+   displayName: 'DeepSeek',
+   balance: {
+     origin: DEEPSEEK_API_ORIGIN,
+@@ -479,6 +496,15 @@ export function adapterFor(provider: string): ProviderAdapter | undefined {
+   return PROVIDER_ADAPTERS.find((adapter) => adapter.ids.includes(provider))
+ }
+ 
++/**
++ * Find the adapter whose family covers a route key: its probed `ids` plus the
++ * `familyIds` that join the family for reporting and pricing only. Route keys
++ * outside both lists belong to no family.
++ */
++export function adapterFamilyFor(provider: string): ProviderAdapter | undefined {
++  return PROVIDER_ADAPTERS.find((adapter) => adapter.ids.includes(provider) || (adapter.familyIds?.includes(provider) ?? false))
++}
++
+ /** Origin of a configured base URL, or undefined when it cannot be parsed. */
+ export function originOf(baseURL: string | undefined): string | undefined {
+   if (baseURL === undefined || baseURL.trim() === '') return undefined
+@@ -518,11 +544,15 @@ export function balanceAppliesToRoute(adapter: ProviderAdapter, baseURL: string
+ /**
+  * Whether a provider route belongs to the official DeepSeek family: the only
+  * family with a spend price book and a settings-section-owned env credential
+- * (llm-deepseek) rather than a pi-ai profile. Drives the env fallback in
+- * credential resolution and the fold-time cost stamping.
++ * (llm-deepseek) rather than a pi-ai profile. Drives the fold-time cost
++ * stamping, the spend watch and the peak/off-peak line, and covers the account
++ * channel (`deepseek-account`) as well as the probed routes, because both
++ * channels bill the same account under the same price book. That route is
++ * never probed, so its membership cannot reach the API-key env fallback in
++ * credential resolution.
+  */
+ export function isDeepSeekProviderRoute(provider: string): boolean {
+-  return adapterFor(provider) === DEEPSEEK
++  return adapterFamilyFor(provider) === DEEPSEEK
+ }
+ 
+ /**
+diff --git a/packages/dsh-usage/tests/adapters.spec.ts b/packages/dsh-usage/tests/adapters.spec.ts
+index ba15c0b..bf45b70 100644
+--- a/packages/dsh-usage/tests/adapters.spec.ts
++++ b/packages/dsh-usage/tests/adapters.spec.ts
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from 'vitest'
+-import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, originOf, providerErrorMessage, PROVIDER_ADAPTERS } from '../src/core/adapters.ts'
++import { adapterFamilyFor, adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, originOf, providerErrorMessage, PROVIDER_ADAPTERS } from '../src/core/adapters.ts'
+ 
+ describe('adapterFor', () => {
+   it('serves every documented route id', () => {
+@@ -21,6 +21,18 @@ describe('adapterFor', () => {
+     expect(isDeepSeekProviderRoute('unknown-provider')).toBe(false)
+   })
+ 
++  it('keeps the sign-in account route in the family without making it probeable', () => {
++    // `deepseek-account` is the live route llm-deepseek-account registers for
++    // the account (sign-in) channel: the same account and models, reached with
++    // an account token instead of the family API key. Family behaviour must
++    // count its tokens, and the API-key balance probe must not touch it.
++    expect(adapterFor('deepseek-account')).toBeUndefined()
++    expect(adapterFamilyFor('deepseek-account')).toBe(adapterFor('deepseek'))
++    expect(isDeepSeekProviderRoute('deepseek-account')).toBe(true)
++    expect(isDeepSeekProviderRoute('deepseek-official')).toBe(true)
++    expect(isDeepSeekProviderRoute('deepseek')).toBe(true)
++  })
++
+   it('keeps route ids unique across adapters', () => {
+     const seen = new Set<string>()
+     for (const adapter of PROVIDER_ADAPTERS) {
+@@ -30,6 +42,18 @@ describe('adapterFor', () => {
+       }
+     }
+   })
++
++  it('keeps family-only ids unique and clear of every probed id', () => {
++    const probed = new Set(PROVIDER_ADAPTERS.flatMap((adapter) => [...adapter.ids]))
++    const seen = new Set<string>()
++    for (const adapter of PROVIDER_ADAPTERS) {
++      for (const id of adapter.familyIds ?? []) {
++        expect(probed.has(id), `${id} must not be probed by any adapter`).toBe(false)
++        expect(seen.has(id), id).toBe(false)
++        seen.add(id)
++      }
++    }
++  })
+ })
+ 
+ // #1688: `deepseek` is both the official catalog entry and a common id for an
+diff --git a/packages/dsh-usage/tests/voucher.spec.ts b/packages/dsh-usage/tests/voucher.spec.ts
+index e24dad1..3b75c2d 100644
+--- a/packages/dsh-usage/tests/voucher.spec.ts
++++ b/packages/dsh-usage/tests/voucher.spec.ts
+@@ -33,6 +33,17 @@ describe('deepseekVoucherData', () => {
+     expect(data).toMatchObject({ tokens: 150_000, calls: 5, cost: 2, from: '2025-12-01', to: '2026-01-01' })
+   })
+ 
++  it('mints for the sign-in account channel, which carries no balance probe', () => {
++    // The account route bills the same DeepSeek account with an account token,
++    // so its ledger rows are official-family usage even though the adapter
++    // never probes it (see adapters.spec.ts).
++    const data = deepseekVoucherData(windowOf([
++      row('deepseek-account', 6_339_322, 101, 3.75),
++      row('kimi-coding', 999_999, 40, 0),
++    ]))
++    expect(data).toMatchObject({ tokens: 6_339_322, calls: 101, cost: 3.75, from: '2025-12-01', to: '2026-01-01' })
++  })
++
+   it('counts cache tokens as minted whale yuan', () => {
+     const data = deepseekVoucherData(windowOf([{
+       provider: 'deepseek',
